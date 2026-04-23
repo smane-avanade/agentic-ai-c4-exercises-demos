@@ -634,6 +634,14 @@ class InventoryDecision(BaseModel):
     rationale: str = Field(description="Short explanation of stock position and reorder need")
 
 
+class RoutingEvaluation(BaseModel):
+    final_request_type: str = Field(
+        description="One of: inventory_inquiry, quote_request, sales_order, unknown"
+    )
+    should_override: bool = Field(description="Whether the initial router intent should be overridden")
+    rationale: str = Field(description="Why the decision was kept or overridden")
+
+
 """Set up tools for your agents to use, these should be methods that combine the database functions above
  and apply criteria to them to ensure that the flow of the system is correct."""
 
@@ -1084,6 +1092,7 @@ class Orchestrator:
         self.quoting_agent = QuotingAgent()
         self.sales_agent = SalesAgent()
         self.router_agent = self._build_router_agent()
+        self.routing_evaluator = self._build_routing_evaluator()
 
     def _build_router_agent(self) -> Optional[Agent]:
         api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
@@ -1102,12 +1111,11 @@ class Orchestrator:
             system_prompt=(
                 "You are a routing agent for a paper supply company. "
                 "Classify each incoming request as one of: inventory_inquiry, quote_request, sales_order, or unknown. "
-                "Apply strict intent rules in this order: "
-                "1) inventory_inquiry when the user asks about stock, availability, on-hand quantity, lead time, or delivery feasibility without explicitly committing to buy now; "
-                "2) quote_request when the user asks for quote, pricing, price estimate, cost, budgetary numbers, or comparison, even if quantity is included; "
-                "3) sales_order only when the user clearly asks to place/confirm/finalize an order now (examples: place order, book it, proceed with purchase, confirm purchase). "
-                "If language is ambiguous between quote_request and sales_order, choose quote_request. "
-                "If language is ambiguous between inventory_inquiry and sales_order, choose inventory_inquiry. "
+                "Apply intent rules with these priorities: "
+                "1) inventory_inquiry for stock/availability/lead-time questions when no explicit purchase confirmation is present; "
+                "2) quote_request for quote/price/cost/budget questions, including requests that mention quantity; "
+                "3) sales_order when user intent is to transact now (place order, confirm order, proceed with purchase, book it, finalize order). "
+                "If a request contains both order language and pricing/availability questions, prefer quote_request or inventory_inquiry unless the user explicitly confirms to proceed now. "
                 "Never classify as sales_order based only on quantity, product name, or urgent tone. "
                 "Extract requested quantity if present. "
                 "Extract the most likely item_name using exact catalog wording when clear. "
@@ -1117,34 +1125,125 @@ class Orchestrator:
             output_retries=1,
         )
 
-    def _apply_routing_guardrails(self, request_text: str, intent: RequestIntent) -> RequestIntent:
+    def _build_routing_evaluator(self) -> Optional[Agent]:
+        api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+        model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
+        base_url = os.getenv("UDACITY_OPENAI_BASE_URL", "https://openai.vocareum.com/v1")
+
+        if not api_key:
+            return None
+
+        provider = OpenAIProvider(base_url=base_url, api_key=api_key)
+        model = OpenAIChatModel(model_name, provider=provider)
+
+        return Agent(
+            model=model,
+            output_type=RoutingEvaluation,
+            system_prompt=(
+                "You are a routing quality evaluator for a paper supply assistant. "
+                "Review the incoming request text and an initial request_type classification. "
+                "Return final_request_type as one of inventory_inquiry, quote_request, sales_order, or unknown. "
+                "Override to sales_order only when there is clear transactional intent to buy now (for example: place order, confirm order, proceed with purchase, finalize order). "
+                "If the request is exploratory, asks about price/cost/quote, or asks about stock/availability, prefer quote_request or inventory_inquiry. "
+                "Set should_override=true only when the initial classification is clearly incorrect."
+            ),
+            retries=1,
+            output_retries=1,
+        )
+
+    def _fallback_routing_guardrails(self, request_text: str, intent: RequestIntent) -> RequestIntent:
         text = request_text.lower()
 
-        quote_tokens = ["quote", "pricing", "price", "cost", "estimate", "budget"]
-        inventory_tokens = ["inventory", "stock", "available", "availability", "on hand", "lead time"]
-        explicit_sales_tokens = [
+        quote_tokens = ["quote", "quotation", "pricing", "price", "cost", "estimate", "budget", "how much", "rate"]
+        inventory_tokens = [
+            "inventory",
+            "stock",
+            "available",
+            "availability",
+            "on hand",
+            "lead time",
+            "in stock",
+            "delivery",
+        ]
+        strong_sales_tokens = [
             "place order",
             "book it",
             "confirm order",
             "confirm purchase",
             "proceed with purchase",
+            "proceed with the order",
             "buy now",
             "finalize order",
+            "go ahead with order",
+            "i want to order now",
         ]
+        weak_sales_tokens = ["order", "purchase", "buy"]
+        question_tokens = ["can you", "could you", "do you", "is it", "what", "how", "?"]
 
         has_quote_signal = any(token in text for token in quote_tokens)
         has_inventory_signal = any(token in text for token in inventory_tokens)
-        has_explicit_sales_signal = any(token in text for token in explicit_sales_tokens)
+        has_strong_sales_signal = any(token in text for token in strong_sales_tokens)
+        has_weak_sales_signal = any(token in text for token in weak_sales_tokens)
+        has_question_signal = any(token in text for token in question_tokens)
 
-        if intent.request_type == "sales_order" and not has_explicit_sales_signal:
-            if has_quote_signal:
+        if intent.request_type == "sales_order":
+            if has_quote_signal and not has_strong_sales_signal:
                 intent.request_type = "quote_request"
-                intent.rationale = "Routing guardrail: quote language detected without explicit purchase confirmation."
-            elif has_inventory_signal:
+                intent.rationale = "Routing guardrail: pricing language present without explicit purchase confirmation."
+            elif has_inventory_signal and not has_strong_sales_signal:
                 intent.request_type = "inventory_inquiry"
                 intent.rationale = "Routing guardrail: inventory language detected without explicit purchase confirmation."
+            elif has_question_signal and has_weak_sales_signal and not has_strong_sales_signal:
+                intent.request_type = "quote_request"
+                intent.rationale = "Routing guardrail: order wording appears exploratory; routing to quote first."
+
+        elif intent.request_type in {"unknown", "quote_request", "inventory_inquiry"}:
+            if has_strong_sales_signal and not has_quote_signal and not has_inventory_signal:
+                intent.request_type = "sales_order"
+                intent.rationale = "Routing guardrail: explicit purchase confirmation detected."
+            elif intent.request_type == "unknown":
+                if has_quote_signal:
+                    intent.request_type = "quote_request"
+                    intent.rationale = "Routing guardrail: quote-related language detected."
+                elif has_inventory_signal:
+                    intent.request_type = "inventory_inquiry"
+                    intent.rationale = "Routing guardrail: inventory-related language detected."
+                elif has_weak_sales_signal and not has_question_signal:
+                    intent.request_type = "sales_order"
+                    intent.rationale = "Routing guardrail: transactional wording detected."
 
         return intent
+
+    def _apply_routing_guardrails(self, request_text: str, intent: RequestIntent) -> RequestIntent:
+        fallback_intent = self._fallback_routing_guardrails(request_text, intent)
+
+        if self.routing_evaluator is None:
+            return fallback_intent
+
+        prompt = (
+            f"Request text: {request_text}\n"
+            f"Initial request_type: {intent.request_type}\n"
+            f"Initial rationale: {intent.rationale or 'none'}\n"
+            "Evaluate whether the initial classification should be kept or overridden."
+        )
+
+        try:
+            result = self.routing_evaluator.run_sync(prompt)
+            evaluation = result.output
+
+            valid_types = {"inventory_inquiry", "quote_request", "sales_order", "unknown"}
+            if evaluation.final_request_type not in valid_types:
+                return fallback_intent
+
+            if evaluation.should_override:
+                fallback_intent.request_type = evaluation.final_request_type
+
+            if evaluation.rationale:
+                fallback_intent.rationale = f"Routing evaluator: {evaluation.rationale}"
+
+            return fallback_intent
+        except Exception:
+            return fallback_intent
 
     def _fallback_parse_request(self, request_text: str) -> RequestIntent:
         text = request_text.lower()
