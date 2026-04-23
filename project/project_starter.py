@@ -660,6 +660,8 @@ class RoutingEvaluation(BaseModel):
 
 # Tools for inventory agent
 class InventoryAgent:
+    """Inventory-focused worker agent with deterministic and model-assisted checks."""
+
     def __init__(self) -> None:
         self.inventory_agent = self._build_inventory_agent()
 
@@ -677,6 +679,8 @@ class InventoryAgent:
         return get_supplier_delivery_date(input_date_str, quantity)
 
     def _build_inventory_agent(self) -> Optional[Agent]:
+        """Build and configure the inventory decision agent with tool registrations."""
+
         api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
         base_url = os.getenv("UDACITY_OPENAI_BASE_URL", "https://openai.vocareum.com/v1")
@@ -717,6 +721,8 @@ class InventoryAgent:
         return inventory_agent
 
     def _get_inventory_context(self, item_name: str, as_of_date: str) -> Dict[str, int]:
+        """Collect current and minimum stock context required for inventory decisions."""
+
         stock_context = self.tool_get_stock_level(item_name, as_of_date)
         current_stock = int(stock_context["current_stock"])
 
@@ -738,6 +744,8 @@ class InventoryAgent:
         min_stock_level: int,
         needed_qty: Optional[int] = None,
     ) -> InventoryDecision:
+        """Produce a deterministic inventory decision when model output is unavailable or invalid."""
+
         if needed_qty is None:
             if current_stock < min_stock_level:
                 return InventoryDecision(
@@ -782,6 +790,8 @@ class InventoryAgent:
         min_stock_level: int,
         needed_qty: Optional[int] = None,
     ) -> InventoryDecision:
+        """Run model-assisted inventory reasoning with validation and safe fallback behavior."""
+
         if self.inventory_agent is None:
             return self._fallback_inventory_decision(current_stock, min_stock_level, needed_qty)
 
@@ -812,6 +822,8 @@ class InventoryAgent:
             return self._fallback_inventory_decision(current_stock, min_stock_level, needed_qty)
 
     def check_inventory(self, item_name: str, as_of_date: str) -> AgentResult:
+        """Handle inventory inquiry requests for a single item and date."""
+
         inventory_context = self._get_inventory_context(item_name, as_of_date)
         current_stock = inventory_context["current_stock"]
         min_stock_level = inventory_context["min_stock_level"]
@@ -840,6 +852,8 @@ class InventoryAgent:
         )
 
     def maybe_reorder(self, item_name: str, needed_qty: int, as_of_date: str) -> AgentResult:
+        """Assess shortage against requested quantity and return reorder guidance when needed."""
+
         inventory_context = self._get_inventory_context(item_name, as_of_date)
         current_stock = inventory_context["current_stock"]
         min_stock_level = inventory_context["min_stock_level"]
@@ -876,6 +890,8 @@ class InventoryAgent:
 
 # Tools for quoting agent
 class QuotingAgent:
+    """Pricing and quotation worker agent with deterministic fallback quote logic."""
+
     def __init__(self) -> None:
         self.quote_agent = self._build_quote_agent()
 
@@ -893,6 +909,8 @@ class QuotingAgent:
         }
 
     def _build_quote_agent(self) -> Optional[Agent]:
+        """Build and configure the quote decision agent with history and stock tools."""
+
         api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
         base_url = os.getenv("UDACITY_OPENAI_BASE_URL", "https://openai.vocareum.com/v1")
@@ -933,12 +951,16 @@ class QuotingAgent:
         return quote_agent
 
     def _get_catalog_unit_price(self, item_name: str) -> float:
+        """Lookup the catalog unit price for an item using case-insensitive matching."""
+
         for item in paper_supplies:
             if item["item_name"].lower() == item_name.lower():
                 return float(item["unit_price"])
         return 0.12
 
     def _fallback_quote_decision(self, item_name: str, quantity: int) -> QuoteDecision:
+        """Generate a deterministic quote when the model is unavailable or output is invalid."""
+
         base_price = self._get_catalog_unit_price(item_name)
 
         if quantity >= 1000:
@@ -973,6 +995,8 @@ class QuotingAgent:
         available_stock: int,
         history: List[Dict],
     ) -> QuoteDecision:
+        """Run model-assisted quote generation with bounded validation and fallback."""
+
         if self.quote_agent is None:
             return self._fallback_quote_decision(item_name, quantity)
 
@@ -1008,6 +1032,8 @@ class QuotingAgent:
             return self._fallback_quote_decision(item_name, quantity)
 
     def generate_quote(self, item_name: str, quantity: int, as_of_date: str) -> AgentResult:
+        """Create a customer-facing quote response with supporting context details."""
+
         history = self.tool_search_quote_history([item_name], limit=5)
         inventory_snapshot = self.tool_get_all_inventory(as_of_date)
         available_stock = int(inventory_snapshot.get(item_name, 0))
@@ -1031,6 +1057,8 @@ class QuotingAgent:
 
 # Tools for ordering agent
 class SalesAgent:
+    """Sales fulfillment worker agent with strict anti-oversell safety checks."""
+
     def __init__(self) -> None:
         self.decision_agent = self._build_sales_agent()
 
@@ -1058,6 +1086,8 @@ class SalesAgent:
         return generate_financial_report(as_of_date)
 
     def _build_sales_agent(self) -> Optional[Agent]:
+        """Build and configure the sales decision agent with transactional tools."""
+
         api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
         base_url = os.getenv("UDACITY_OPENAI_BASE_URL", "https://openai.vocareum.com/v1")
@@ -1110,6 +1140,8 @@ class SalesAgent:
         return sales_agent
 
     def _fallback_sales_decision(self, quantity: int, current_stock: int) -> SalesDecision:
+        """Return deterministic sales approval/rejection based on current stock only."""
+
         if current_stock < quantity:
             return SalesDecision(
                 status="rejected",
@@ -1133,6 +1165,8 @@ class SalesAgent:
         current_stock: int,
         as_of_date: str,
     ) -> SalesDecision:
+        """Run model-assisted fulfillment decisioning with strict output validation."""
+
         if self.decision_agent is None:
             return self._fallback_sales_decision(quantity, current_stock)
 
@@ -1163,6 +1197,8 @@ class SalesAgent:
             return self._fallback_sales_decision(quantity, current_stock)
 
     def finalize_sale(self, item_name: str, quantity: int, total_price: float, as_of_date: str) -> AgentResult:
+        """Finalize sale transactions safely and reject any request that risks overselling."""
+
         stock_context = self.tool_get_stock_level(item_name, as_of_date)
         current_stock = int(stock_context["current_stock"])
 
@@ -1242,6 +1278,8 @@ class SalesAgent:
 
 # Set up your agents and create an orchestration agent that will manage them.
 class Orchestrator:
+    """Top-level coordinator that routes requests to inventory, quote, and sales workers."""
+
     def __init__(self) -> None:
         self.inventory_agent = InventoryAgent()
         self.quoting_agent = QuotingAgent()
@@ -1250,6 +1288,8 @@ class Orchestrator:
         self.routing_evaluator = self._build_routing_evaluator()
 
     def _build_router_agent(self) -> Optional[Agent]:
+        """Build the primary intent router agent used for initial request classification."""
+
         api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
         base_url = os.getenv("UDACITY_OPENAI_BASE_URL", "https://openai.vocareum.com/v1")
@@ -1281,6 +1321,8 @@ class Orchestrator:
         )
 
     def _build_routing_evaluator(self) -> Optional[Agent]:
+        """Build the routing evaluator used to review and override weak classifications."""
+
         api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
         base_url = os.getenv("UDACITY_OPENAI_BASE_URL", "https://openai.vocareum.com/v1")
@@ -1307,6 +1349,8 @@ class Orchestrator:
         )
 
     def _fallback_routing_guardrails(self, request_text: str, intent: RequestIntent) -> RequestIntent:
+        """Apply deterministic keyword-based routing corrections when needed."""
+
         text = request_text.lower()
 
         quote_tokens = ["quote", "quotation", "pricing", "price", "cost", "estimate", "budget", "how much", "rate"]
@@ -1370,6 +1414,8 @@ class Orchestrator:
         return intent
 
     def _apply_routing_guardrails(self, request_text: str, intent: RequestIntent) -> RequestIntent:
+        """Apply heuristic guardrails and optional evaluator-based routing overrides."""
+
         fallback_intent = self._fallback_routing_guardrails(request_text, intent)
 
         if self.routing_evaluator is None:
@@ -1401,6 +1447,8 @@ class Orchestrator:
             return fallback_intent
 
     def _fallback_parse_request(self, request_text: str) -> RequestIntent:
+        """Parse request intent using lightweight regex heuristics when router is unavailable."""
+
         text = request_text.lower()
 
         quantity_match = re.search(r"(\d+)", text)
@@ -1421,6 +1469,8 @@ class Orchestrator:
         )
 
     def parse_request(self, request_text: str) -> RequestIntent:
+        """Parse and normalize request intent using router output plus fallback safeguards."""
+
         if self.router_agent is None:
             return self._fallback_parse_request(request_text)
 
@@ -1438,6 +1488,8 @@ class Orchestrator:
             return self._fallback_parse_request(request_text)
 
     def _normalize_item_name(self, item_name: Optional[str]) -> Optional[str]:
+        """Map free-form item mentions to canonical catalog names when possible."""
+
         if not item_name:
             return None
 
@@ -1454,7 +1506,10 @@ class Orchestrator:
         return None
 
     def _extract_item_name(self, request_text: str) -> str:
+        """Extract a likely catalog item from request text using simple keyword heuristics."""
+
         text = request_text.lower()
+        # Narrow fallback heuristic: this is not a full catalog search and only handles a few common keywords.
         if "cardstock" in text:
             return "Cardstock"
         if "glossy" in text:
@@ -1466,6 +1521,8 @@ class Orchestrator:
         return "A4 paper"
 
     def handle_request(self, request_text: str, request_date: str) -> str:
+        """Route and fulfill a user request end-to-end through the worker agents."""
+
         intent = self.parse_request(request_text)
         item_name = self._normalize_item_name(intent.item_name) or self._extract_item_name(request_text)
         quantity = intent.quantity or 100
