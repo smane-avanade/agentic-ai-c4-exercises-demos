@@ -990,6 +990,17 @@ class QuotingAgent:
             rationale=rationale,
         )
 
+    def _max_discount_for_quantity(self, quantity: int) -> float:
+        """Return the maximum allowed customer-visible discount for a quantity tier."""
+
+        if quantity >= 1000:
+            return 0.15
+        if quantity >= 500:
+            return 0.10
+        if quantity >= 100:
+            return 0.05
+        return 0.0
+
     def _decide_quote(
         self,
         item_name: str,
@@ -1026,10 +1037,23 @@ class QuotingAgent:
         try:
             result = self.quote_agent.run_sync(prompt)
             decision = result.output
-            if not (0.0 <= decision.discount_rate <= 0.5):
+
+            max_allowed_discount = self._max_discount_for_quantity(quantity)
+            if not (0.0 <= decision.discount_rate <= max_allowed_discount):
                 return self._fallback_quote_decision(item_name, quantity)
             if decision.unit_price <= 0 or decision.total_amount <= 0:
                 return self._fallback_quote_decision(item_name, quantity)
+
+            # Quote math must remain internally consistent for customer-facing responses.
+            expected_total = round(quantity * decision.unit_price, 2)
+            if abs(expected_total - round(decision.total_amount, 2)) > 0.01:
+                return self._fallback_quote_decision(item_name, quantity)
+
+            # Keep unit pricing in a plausible range relative to base catalog price.
+            min_unit_price = round(base_price * (1 - max_allowed_discount), 4)
+            if decision.unit_price < min_unit_price or decision.unit_price > round(base_price, 4):
+                return self._fallback_quote_decision(item_name, quantity)
+
             return decision
         except Exception:
             return self._fallback_quote_decision(item_name, quantity)
