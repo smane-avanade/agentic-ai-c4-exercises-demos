@@ -1,0 +1,21 @@
+request_id,request_date,cash_balance,inventory_value,response
+1,2025-04-01,45082.5,4900.299999999999,Sale completed. Transaction id: 20.
+2,2025-04-03,45082.5,4900.299999999999,"Order cannot be fulfilled: requested 500, available 0. Reorder needed for 500 units. Estimated delivery: 2025-04-07."
+3,2025-04-04,45082.5,4900.299999999999,"Order cannot be fulfilled: requested 10000, available 272. Reorder needed for 9728 units. Estimated delivery: 2025-04-11."
+4,2025-04-05,45136.5,4825.3,Sale completed. Transaction id: 21.
+5,2025-04-05,45190.5,4775.3,Sale completed. Transaction id: 22.
+6,2025-04-06,45190.5,4775.3,"Order cannot be fulfilled: requested 500, available 0. Reorder needed for 500 units. Estimated delivery: 2025-04-10."
+7,2025-04-07,45190.5,4775.3,"Order cannot be fulfilled: requested 500, available 272. Reorder needed for 228 units. Estimated delivery: 2025-04-11."
+8,2025-04-07,45190.5,4775.3,"Order cannot be fulfilled: requested 500, available 387. Reorder needed for 113 units. Estimated delivery: 2025-04-11."
+9,2025-04-07,45213.3,4735.3,Sale completed. Transaction id: 23.
+13,2025-04-08,45213.3,4735.3,"Order cannot be fulfilled: requested 500, available 95. Reorder needed for 405 units. Estimated delivery: 2025-04-12."
+12,2025-04-08,45213.3,4735.3,"Order cannot be fulfilled: requested 200, available 95. Reorder needed for 105 units. Estimated delivery: 2025-04-12."
+10,2025-04-08,45213.3,4735.3,"Order cannot be fulfilled: requested 500, available 187. Reorder needed for 313 units. Estimated delivery: 2025-04-12."
+11,2025-04-08,45213.3,4735.3,"Order cannot be fulfilled: requested 500, available 187. Reorder needed for 313 units. Estimated delivery: 2025-04-12."
+14,2025-04-09,45213.3,4735.3,"Order cannot be fulfilled: requested 5000, available 272. Reorder needed for 4728 units. Estimated delivery: 2025-04-16."
+15,2025-04-12,45213.3,4735.3,"Order cannot be fulfilled: requested 10000, available 272. Reorder needed for 9728 units. Estimated delivery: 2025-04-19."
+16,2025-04-13,45213.3,4735.3,"Order cannot be fulfilled: requested 500, available 272. Reorder needed for 228 units. Estimated delivery: 2025-04-17."
+17,2025-04-14,45213.3,4735.3,"Order cannot be fulfilled: requested 1000, available 272. Reorder needed for 728 units. Estimated delivery: 2025-04-18."
+18,2025-04-14,45213.3,4735.3,"Order cannot be fulfilled: requested 500, available 95. Reorder needed for 405 units. Estimated delivery: 2025-04-18."
+19,2025-04-15,45213.3,4735.3,"Order cannot be fulfilled: requested 2000, available 187. Reorder needed for 1813 units. Estimated delivery: 2025-04-22."
+20,2025-04-17,45213.3,4735.3,"Order cannot be fulfilled: requested 5000, available 0. Reorder needed for 5000 units. Estimated delivery: 2025-04-24."
