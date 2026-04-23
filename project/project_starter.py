@@ -1267,7 +1267,7 @@ class SalesAgent:
 
         return AgentResult(
             status="ok",
-            message=f"Sale completed. Transaction id: {transaction_id}.",
+            message="Sale completed.",
             details={
                 "transaction_id": transaction_id,
                 "cash_balance": cash_after,
