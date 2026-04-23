@@ -1,0 +1,325 @@
+# Multi-Agent System Project Plan
+
+## Beaver's Choice Paper Company - Inventory & Quoting System
+
+### Project Overview
+
+Build a multi-agent system (max 5 agents) to streamline inventory management, quote generation, and sales transactions for Beaver's Choice Paper Company. The system must handle text-based inputs/outputs and be tested against provided sample requests.
+
+**Expected Duration:** ~6 hours
+**Key Deliverables:** Workflow diagram, implementation script, test results, reflection report
+
+---
+
+## Phase 1: Planning & Design (Completion Target: 30 mins)
+
+### 1.1 Review Project Requirements
+
+- [x] Read overview.md to understand business context and challenges
+- [x] Read instructions.md to understand step-by-step approach
+- [x] Read rubric.md to understand evaluation criteria
+- [x] Identify project constraints:
+  - Maximum 5 agents
+  - Text-based input/output only
+  - Must handle inventory, quotes, and transactions
+
+### 1.2 Review Starter Code
+
+- [x] Open and examine project_starter.py
+- [x] Document purpose of each helper function:
+  - [x] `create_transaction()` - Purpose & usage
+  - [x] `get_all_inventory()` - Purpose & usage
+  - [x] `get_stock_level()` - Purpose & usage
+  - [x] `get_supplier_delivery_date()` - Purpose & usage
+  - [x] `get_cash_balance()` - Purpose & usage
+  - [x] `generate_financial_report()` - Purpose & usage
+  - [x] `search_quote_history()` - Purpose & usage
+- [x] Review database schema and sample data
+- [x] Understand the provided evaluation code stub
+
+### 1.3 Design Multi-Agent Architecture
+
+- [x] Define required agents (max 5):
+  - [x] Orchestrator Agent - Responsibilities & capabilities
+  - [x] Inventory Management Agent - Responsibilities & capabilities
+  - [x] Quote Generation Agent - Responsibilities & capabilities
+  - [x] Sales Finalization Agent - Responsibilities & capabilities
+  - [x] (Optional) 5th Agent - Business Analyst Agent included as optional
+- [x] Map agent responsibilities to ensure no overlap
+- [x] Identify tools needed for each agent:
+  - [x] Tool 1 with helper function reference
+  - [x] Tool 2 with helper function reference
+  - [x] Tool 3 with helper function reference
+  - [x] Complete helper-function-to-agent mapping documented
+
+### 1.4 Create Workflow Diagram
+
+- [x] Choose diagramming tool (Mermaid or Diagrams.net)
+- [x] Draft diagram showing:
+  - [x] All agents and their responsibilities
+  - [x] Tools associated with each agent
+  - [x] Data flow between agents
+  - [x] Orchestration logic
+  - [x] Clear purpose labels for each tool
+- [x] Save diagram as image file (diagram.png or diagram.svg)
+- [x] Verify diagram clarity and completeness
+
+---
+
+## Phase 2: Setup & Configuration (Completion Target: 15 mins)
+
+### 2.1 Select Agent Framework
+
+- [x] Compare smolagents, pydantic-ai, and npcsh
+- [ ] Decision: **Selected Framework: \*\*\*\***\_\_\_\_**\*\*\*\***
+- [ ] Justification for selection:
+  - [ ] Reason 1: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
+  - [ ] Reason 2: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
+  - [ ] Reason 3: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
+
+### 2.2 Prepare Development Environment
+
+- [x] Verify Python environment is active
+- [ ] Install selected framework:
+  ```bash
+  pip install [framework-name]
+  ```
+- [ ] Verify all dependencies installed
+- [ ] Create working implementation file: project_implementation.py (or chosen name)
+- [ ] Copy helper functions from project_starter.py to working file
+
+---
+
+## Phase 3: Implementation (Completion Target: 2.5 hours)
+
+### 3.1 Implement Base Agent Structure
+
+- [ ] Initialize chosen framework
+- [ ] Create orchestrator agent:
+  - [ ] Define orchestrator class/function
+  - [ ] Implement inquiry handling logic
+  - [ ] Implement task delegation to worker agents
+  - [ ] Add context management for multi-turn conversations
+- [ ] Create inventory management agent:
+  - [ ] Define agent class/function
+  - [ ] Implement inventory check tool
+  - [ ] Implement reorder decision logic
+  - [ ] Add stock level analysis
+- [ ] Create quote generation agent:
+  - [ ] Define agent class/function
+  - [ ] Implement quote history search tool
+  - [ ] Implement pricing strategy with bulk discounts
+  - [ ] Add quote generation logic
+- [ ] Create sales finalization agent:
+  - [ ] Define agent class/function
+  - [ ] Implement order fulfillment logic
+  - [ ] Implement inventory update on sale
+  - [ ] Add delivery timeline checking
+
+### 3.2 Implement Tool Definitions
+
+- [ ] Map all helper functions to agent tools:
+  - [ ] `create_transaction()` - Implement tool wrapper
+  - [ ] `get_all_inventory()` - Implement tool wrapper
+  - [ ] `get_stock_level()` - Implement tool wrapper
+  - [ ] `get_supplier_delivery_date()` - Implement tool wrapper
+  - [ ] `get_cash_balance()` - Implement tool wrapper
+  - [ ] `generate_financial_report()` - Implement tool wrapper
+  - [ ] `search_quote_history()` - Implement tool wrapper
+- [ ] Add tool descriptions and parameters
+- [ ] Test tool integration with agents
+- [ ] Verify all helper functions are utilized in at least one tool
+
+### 3.3 Implement System Integration
+
+- [ ] Create main orchestration function/class
+- [ ] Implement request parsing and routing
+- [ ] Add error handling and validation:
+  - [ ] Invalid inventory checks
+  - [ ] Insufficient stock scenarios
+  - [ ] Invalid quote requests
+  - [ ] Order processing errors
+- [ ] Implement agent communication patterns
+- [ ] Add logging/debugging capabilities
+- [ ] Create response formatting for customer output
+
+### 3.4 Code Quality & Best Practices
+
+- [ ] Review and improve variable naming (snake_case)
+- [ ] Review and improve function naming
+- [ ] Add docstrings to all functions
+- [ ] Add inline comments for complex logic
+- [ ] Organize code into logical modules/sections
+- [ ] Ensure no sensitive data leakage in outputs
+- [ ] Verify customer-facing outputs are clear and justified
+
+---
+
+## Phase 4: Testing & Evaluation (Completion Target: 1.5 hours)
+
+### 4.1 Prepare Test Data
+
+- [ ] Load quote_requests_sample.csv
+- [ ] Review sample requests for variety:
+  - [ ] Inventory queries
+  - [ ] Quote requests with different quantities
+  - [ ] Sales/order requests
+  - [ ] Edge cases (insufficient stock, etc.)
+
+### 4.2 Run System Tests
+
+- [ ] Test with quote_requests_sample.csv
+- [ ] Generate test_results.csv with outputs
+- [ ] Document results for each request:
+  - [ ] Request type (inquiry/quote/order)
+  - [ ] Input details
+  - [ ] Agent response
+  - [ ] System action taken
+  - [ ] Outcome (success/failure/reason)
+
+### 4.3 Validate Rubric Requirements Met
+
+- [ ] Verify at least 3 requests result in cash balance change
+- [ ] Verify at least 3 quote requests successfully fulfilled
+- [ ] Verify not all requests are fulfilled (with reasons documented)
+- [ ] Verify system handles inventory constraints properly
+- [ ] Verify quote generation logic is sound
+- [ ] Verify order fulfillment accuracy
+
+### 4.4 Debug & Refine
+
+- [ ] Identify any failing test cases
+- [ ] Debug agent reasoning and decisions
+- [ ] Fix issues in tool integration
+- [ ] Verify improved functionality
+- [ ] Re-test until satisfactory performance
+
+---
+
+## Phase 5: Documentation & Reflection (Completion Target: 1 hour)
+
+### 5.1 Create Reflection Report
+
+- [ ] Create or update reflection/analysis document (e.g., system_analysis.md)
+- [ ] Section 1: Agent Workflow Explanation
+  - [ ] Explain the workflow diagram in detail
+  - [ ] Describe each agent's role and responsibilities
+  - [ ] Explain decision-making process for architecture
+  - [ ] Justify why max agents chosen (e.g., why exactly 4 agents vs 5)
+- [ ] Section 2: Evaluation Results Analysis
+  - [ ] Reference test_results.csv findings
+  - [ ] Identify system strengths:
+    - [ ] Strength 1: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
+    - [ ] Strength 2: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
+    - [ ] Strength 3: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
+  - [ ] Identify areas for improvement:
+    - [ ] Area 1: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
+    - [ ] Area 2: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
+- [ ] Section 3: Improvement Suggestions
+  - [ ] Suggestion 1 (detailed):
+    - [ ] What would be improved:
+    - [ ] How to implement:
+    - [ ] Expected benefit:
+  - [ ] Suggestion 2 (detailed):
+    - [ ] What would be improved:
+    - [ ] How to implement:
+    - [ ] Expected benefit:
+  - [ ] (Optional) Suggestion 3 - Advanced features:
+    - [ ] Ideas: Customer negotiation agent, terminal animation, business advisor
+
+### 5.2 Verify All Deliverables
+
+- [ ] ✅ Workflow Diagram
+  - [ ] File: \***\*\*\*\*\***\_\_\_\_\***\*\*\*\*\***
+  - [ ] Shows all agents: YES / NO
+  - [ ] Shows all tools: YES / NO
+  - [ ] Shows data flow: YES / NO
+  - [ ] Shows orchestration: YES / NO
+- [ ] ✅ Implementation Script
+  - [ ] File: project_implementation.py (or actual name)
+  - [ ] Readable variable names: YES / NO
+  - [ ] Proper docstrings: YES / NO
+  - [ ] Comments for complex logic: YES / NO
+  - [ ] Modular structure: YES / NO
+  - [ ] All 7 helper functions used: YES / NO
+- [ ] ✅ Test Results
+  - [ ] File: test_results.csv
+  - [ ] ≥3 requests with cash balance change: YES / NO
+  - [ ] ≥3 successful quote requests: YES / NO
+  - [ ] Some unfulfilled requests with reasons: YES / NO
+- [ ] ✅ Reflection Report
+  - [ ] File: \***\*\*\*\*\***\_\_\_\_\***\*\*\*\*\***
+  - [ ] Workflow explanation: YES / NO
+  - [ ] Evaluation discussion: YES / NO
+  - [ ] ≥2 improvement suggestions: YES / NO
+
+### 5.3 Final Review
+
+- [ ] Run system one final time with test data
+- [ ] Verify no errors in output
+- [ ] Check all outputs follow rubric guidelines:
+  - [ ] Transparent and explainable: YES / NO
+  - [ ] No sensitive data exposed: YES / NO
+  - [ ] Rationale provided for decisions: YES / NO
+- [ ] Review code for any final improvements
+- [ ] Ensure all documentation is clear and complete
+
+---
+
+## Optional: Going Above & Beyond (Bonus Features)
+
+### Enhanced Features (if time permits)
+
+- [ ] Implement customer negotiation agent
+  - [ ] Analyze customer context from requests
+  - [ ] Negotiate pricing/terms
+  - [ ] Report negotiation outcomes
+- [ ] Create terminal animation
+  - [ ] Show real-time agent processing
+  - [ ] Visualize data flow between agents
+  - [ ] Display customer request journey
+- [ ] Implement business advisor agent
+  - [ ] Analyze all transactions
+  - [ ] Identify trends and opportunities
+  - [ ] Recommend operational improvements
+
+---
+
+## Summary of Deliverables
+
+| Deliverable           | File/Location                | Status | Notes                                  |
+| --------------------- | ---------------------------- | ------ | -------------------------------------- |
+| Workflow Diagram      | docs/architecture.md         | 🟨     | Mermaid complete; image export pending |
+| Architecture Options  | docs/architecture_options.md | ✅     | Alternatives separated and documented  |
+| Implementation Script | project_implementation.py    | ⬜     | Single Python file                     |
+| Test Results          | test_results.csv             | ⬜     | Generated from evaluation              |
+| Reflection Report     | docs/system_analysis.md      | ⬜     | Detailed analysis document             |
+| Plan Document         | docs/plan.md                 | ✅     | This document                          |
+
+---
+
+## Progress Checklist
+
+**Phase 1 (Planning & Design):** 🟨 ~90% (diagram image export pending)  
+**Phase 2 (Setup & Configuration):** 🟨 ~20% (framework decision pending)  
+**Phase 3 (Implementation):** ⬜ 0% → 100%  
+**Phase 4 (Testing & Evaluation):** ⬜ 0% → 100%  
+**Phase 5 (Documentation & Reflection):** ⬜ 0% → 100%
+
+**Overall Project Completion:** 🟨 ~22%
+
+---
+
+## Notes & Observations
+
+- **Architecture Selected:** Option 1 (Three-Agent Hub-and-Spoke) with optional Business Analyst agent
+- **Architecture Artifacts Created:** `docs/architecture.md` and `docs/architecture_options.md`
+- **Framework Selection Pending:** pydantic-ai is currently the recommended direction
+- **Diagram Export Pending:** Mermaid diagrams are complete; image export to PNG/SVG still pending
+- **Implementation Details:** To begin in `project/project_starter.py` under the provided starter sections
+- **Key Constraint:** Maximum 5 agents - current design uses 4 agents
+
+---
+
+_Last Updated: 2026-04-23_  
+_Next Phase Start Time: Phase 2.1 (finalize framework selection)_
