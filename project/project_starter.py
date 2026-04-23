@@ -1102,13 +1102,49 @@ class Orchestrator:
             system_prompt=(
                 "You are a routing agent for a paper supply company. "
                 "Classify each incoming request as one of: inventory_inquiry, quote_request, sales_order, or unknown. "
-                "Extract the requested quantity if present. "
-                "Extract the most likely item_name using the exact product wording when the request is clear. "
+                "Apply strict intent rules in this order: "
+                "1) inventory_inquiry when the user asks about stock, availability, on-hand quantity, lead time, or delivery feasibility without explicitly committing to buy now; "
+                "2) quote_request when the user asks for quote, pricing, price estimate, cost, budgetary numbers, or comparison, even if quantity is included; "
+                "3) sales_order only when the user clearly asks to place/confirm/finalize an order now (examples: place order, book it, proceed with purchase, confirm purchase). "
+                "If language is ambiguous between quote_request and sales_order, choose quote_request. "
+                "If language is ambiguous between inventory_inquiry and sales_order, choose inventory_inquiry. "
+                "Never classify as sales_order based only on quantity, product name, or urgent tone. "
+                "Extract requested quantity if present. "
+                "Extract the most likely item_name using exact catalog wording when clear. "
                 "Do not invent unsupported details."
             ),
             retries=1,
             output_retries=1,
         )
+
+    def _apply_routing_guardrails(self, request_text: str, intent: RequestIntent) -> RequestIntent:
+        text = request_text.lower()
+
+        quote_tokens = ["quote", "pricing", "price", "cost", "estimate", "budget"]
+        inventory_tokens = ["inventory", "stock", "available", "availability", "on hand", "lead time"]
+        explicit_sales_tokens = [
+            "place order",
+            "book it",
+            "confirm order",
+            "confirm purchase",
+            "proceed with purchase",
+            "buy now",
+            "finalize order",
+        ]
+
+        has_quote_signal = any(token in text for token in quote_tokens)
+        has_inventory_signal = any(token in text for token in inventory_tokens)
+        has_explicit_sales_signal = any(token in text for token in explicit_sales_tokens)
+
+        if intent.request_type == "sales_order" and not has_explicit_sales_signal:
+            if has_quote_signal:
+                intent.request_type = "quote_request"
+                intent.rationale = "Routing guardrail: quote language detected without explicit purchase confirmation."
+            elif has_inventory_signal:
+                intent.request_type = "inventory_inquiry"
+                intent.rationale = "Routing guardrail: inventory language detected without explicit purchase confirmation."
+
+        return intent
 
     def _fallback_parse_request(self, request_text: str) -> RequestIntent:
         text = request_text.lower()
@@ -1140,6 +1176,7 @@ class Orchestrator:
             if intent.quantity is None:
                 fallback_intent = self._fallback_parse_request(request_text)
                 intent.quantity = fallback_intent.quantity
+            intent = self._apply_routing_guardrails(request_text, intent)
             if not intent.rationale:
                 intent.rationale = "pydantic-ai router classification"
             return intent
