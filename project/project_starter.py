@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union
 from sqlalchemy import create_engine, Engine
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent
+from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
@@ -279,6 +279,15 @@ def create_transaction(
         if transaction_type not in {"stock_orders", "sales"}:
             raise ValueError("Transaction type must be 'stock_orders' or 'sales'")
 
+        # Hard safety check: never allow sales to exceed available stock.
+        if transaction_type == "sales":
+            stock_snapshot = get_stock_level(item_name, date_str)
+            available_units = int(stock_snapshot["current_stock"].iloc[0])
+            if quantity > available_units:
+                raise ValueError(
+                    f"Insufficient stock for sale: requested {quantity}, available {available_units}."
+                )
+
         # Prepare transaction record as a single-row DataFrame
         transaction = pd.DataFrame([{
             "item_name": item_name,
@@ -358,11 +367,14 @@ def get_stock_level(item_name: str, as_of_date: Union[str, datetime]) -> pd.Data
     stock_query = """
         SELECT
             item_name,
-            COALESCE(SUM(CASE
-                WHEN transaction_type = 'stock_orders' THEN units
-                WHEN transaction_type = 'sales' THEN -units
-                ELSE 0
-            END), 0) AS current_stock
+            MAX(
+                COALESCE(SUM(CASE
+                    WHEN transaction_type = 'stock_orders' THEN units
+                    WHEN transaction_type = 'sales' THEN -units
+                    ELSE 0
+                END), 0),
+                0
+            ) AS current_stock
         FROM transactions
         WHERE item_name = :item_name
         AND transaction_date <= :as_of_date
@@ -651,6 +663,19 @@ class InventoryAgent:
     def __init__(self) -> None:
         self.inventory_agent = self._build_inventory_agent()
 
+    def tool_get_stock_level(self, item_name: str, as_of_date: str) -> Dict[str, int]:
+        stock_df = get_stock_level(item_name, as_of_date)
+        return {
+            "item_name": item_name,
+            "current_stock": int(stock_df["current_stock"].iloc[0]),
+        }
+
+    def tool_get_all_inventory(self, as_of_date: str) -> Dict[str, int]:
+        return get_all_inventory(as_of_date)
+
+    def tool_get_supplier_delivery_date(self, input_date_str: str, quantity: int) -> str:
+        return get_supplier_delivery_date(input_date_str, quantity)
+
     def _build_inventory_agent(self) -> Optional[Agent]:
         api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
@@ -662,7 +687,7 @@ class InventoryAgent:
         provider = OpenAIProvider(base_url=base_url, api_key=api_key)
         model = OpenAIChatModel(model_name, provider=provider)
 
-        return Agent(
+        inventory_agent = Agent(
             model=model,
             output_type=InventoryDecision,
             system_prompt=(
@@ -670,15 +695,30 @@ class InventoryAgent:
                 "Given current stock, minimum stock, and optionally requested quantity, decide whether a reorder is needed. "
                 "Return status='pending' when a reorder is needed, otherwise status='ok'. "
                 "Set shortage to the number of units missing relative to the requested quantity when one is provided, or 0 when no reorder is needed. "
-                "Keep the rationale brief and operationally clear."
+                "Keep the rationale brief and operationally clear. "
+                "You may use available tools when needed to validate stock and delivery information."
             ),
             retries=1,
             output_retries=1,
         )
 
+        @inventory_agent.tool
+        def tool_get_stock_level(ctx: RunContext[None], item_name: str, as_of_date: str) -> Dict[str, int]:
+            return self.tool_get_stock_level(item_name, as_of_date)
+
+        @inventory_agent.tool
+        def tool_get_all_inventory(ctx: RunContext[None], as_of_date: str) -> Dict[str, int]:
+            return self.tool_get_all_inventory(as_of_date)
+
+        @inventory_agent.tool
+        def tool_get_supplier_delivery_date(ctx: RunContext[None], input_date_str: str, quantity: int) -> str:
+            return self.tool_get_supplier_delivery_date(input_date_str, quantity)
+
+        return inventory_agent
+
     def _get_inventory_context(self, item_name: str, as_of_date: str) -> Dict[str, int]:
-        stock_df = get_stock_level(item_name, as_of_date)
-        current_stock = int(stock_df["current_stock"].iloc[0])
+        stock_context = self.tool_get_stock_level(item_name, as_of_date)
+        current_stock = int(stock_context["current_stock"])
 
         inventory_df = pd.read_sql(
             "SELECT min_stock_level FROM inventory WHERE item_name = :item_name LIMIT 1",
@@ -822,7 +862,7 @@ class InventoryAgent:
                 },
             )
 
-        delivery_date = get_supplier_delivery_date(as_of_date, decision.shortage)
+        delivery_date = self.tool_get_supplier_delivery_date(as_of_date, decision.shortage)
         return AgentResult(
             status="pending",
             message=f"Reorder needed for {decision.shortage} units. Estimated delivery: {delivery_date}.",
@@ -839,6 +879,19 @@ class QuotingAgent:
     def __init__(self) -> None:
         self.quote_agent = self._build_quote_agent()
 
+    def tool_search_quote_history(self, search_terms: List[str], limit: int = 5) -> List[Dict]:
+        return search_quote_history(search_terms, limit)
+
+    def tool_get_all_inventory(self, as_of_date: str) -> Dict[str, int]:
+        return get_all_inventory(as_of_date)
+
+    def tool_get_stock_level(self, item_name: str, as_of_date: str) -> Dict[str, int]:
+        stock_df = get_stock_level(item_name, as_of_date)
+        return {
+            "item_name": item_name,
+            "current_stock": int(stock_df["current_stock"].iloc[0]),
+        }
+
     def _build_quote_agent(self) -> Optional[Agent]:
         api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
@@ -850,7 +903,7 @@ class QuotingAgent:
         provider = OpenAIProvider(base_url=base_url, api_key=api_key)
         model = OpenAIChatModel(model_name, provider=provider)
 
-        return Agent(
+        quote_agent = Agent(
             model=model,
             output_type=QuoteDecision,
             system_prompt=(
@@ -858,11 +911,26 @@ class QuotingAgent:
                 "Use the provided base price, quantity, available stock, and quote history to produce a competitive but reasonable quote. "
                 "Keep discount_rate between 0.0 and 0.5. "
                 "Make the rationale customer-safe and mention quantity pricing when relevant. "
-                "Do not expose internal margin calculations or hidden business data."
+                "Do not expose internal margin calculations or hidden business data. "
+                "You may use available tools for historical context and stock validation."
             ),
             retries=1,
             output_retries=1,
         )
+
+        @quote_agent.tool
+        def tool_search_quote_history(ctx: RunContext[None], search_terms: List[str], limit: int = 5) -> List[Dict]:
+            return self.tool_search_quote_history(search_terms, limit)
+
+        @quote_agent.tool
+        def tool_get_all_inventory(ctx: RunContext[None], as_of_date: str) -> Dict[str, int]:
+            return self.tool_get_all_inventory(as_of_date)
+
+        @quote_agent.tool
+        def tool_get_stock_level(ctx: RunContext[None], item_name: str, as_of_date: str) -> Dict[str, int]:
+            return self.tool_get_stock_level(item_name, as_of_date)
+
+        return quote_agent
 
     def _get_catalog_unit_price(self, item_name: str) -> float:
         for item in paper_supplies:
@@ -940,8 +1008,8 @@ class QuotingAgent:
             return self._fallback_quote_decision(item_name, quantity)
 
     def generate_quote(self, item_name: str, quantity: int, as_of_date: str) -> AgentResult:
-        history = search_quote_history([item_name], limit=5)
-        inventory_snapshot = get_all_inventory(as_of_date)
+        history = self.tool_search_quote_history([item_name], limit=5)
+        inventory_snapshot = self.tool_get_all_inventory(as_of_date)
         available_stock = int(inventory_snapshot.get(item_name, 0))
         decision = self._decide_quote(item_name, quantity, as_of_date, available_stock, history)
 
@@ -966,6 +1034,29 @@ class SalesAgent:
     def __init__(self) -> None:
         self.decision_agent = self._build_sales_agent()
 
+    def tool_get_stock_level(self, item_name: str, as_of_date: str) -> Dict[str, int]:
+        stock_df = get_stock_level(item_name, as_of_date)
+        return {
+            "item_name": item_name,
+            "current_stock": int(stock_df["current_stock"].iloc[0]),
+        }
+
+    def tool_create_transaction(
+        self,
+        item_name: str,
+        transaction_type: str,
+        quantity: int,
+        price: float,
+        date: str,
+    ) -> int:
+        return create_transaction(item_name, transaction_type, quantity, price, date)
+
+    def tool_get_cash_balance(self, as_of_date: str) -> float:
+        return get_cash_balance(as_of_date)
+
+    def tool_generate_financial_report(self, as_of_date: str) -> Dict:
+        return generate_financial_report(as_of_date)
+
     def _build_sales_agent(self) -> Optional[Agent]:
         api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
@@ -977,7 +1068,7 @@ class SalesAgent:
         provider = OpenAIProvider(base_url=base_url, api_key=api_key)
         model = OpenAIChatModel(model_name, provider=provider)
 
-        return Agent(
+        sales_agent = Agent(
             model=model,
             output_type=SalesDecision,
             system_prompt=(
@@ -986,11 +1077,37 @@ class SalesAgent:
                 "Return status='ok' only when the full requested quantity can be fulfilled now. "
                 "Return status='rejected' if stock is insufficient. "
                 "Set fulfillable_units to the number of units that can be fulfilled immediately without overselling. "
-                "Do not approve partial fulfillment as ok."
+                "Do not approve partial fulfillment as ok. "
+                "You may use available tools to verify stock and financial context."
             ),
             retries=1,
             output_retries=1,
         )
+
+        @sales_agent.tool
+        def tool_get_stock_level(ctx: RunContext[None], item_name: str, as_of_date: str) -> Dict[str, int]:
+            return self.tool_get_stock_level(item_name, as_of_date)
+
+        @sales_agent.tool
+        def tool_create_transaction(
+            ctx: RunContext[None],
+            item_name: str,
+            transaction_type: str,
+            quantity: int,
+            price: float,
+            date: str,
+        ) -> int:
+            return self.tool_create_transaction(item_name, transaction_type, quantity, price, date)
+
+        @sales_agent.tool
+        def tool_get_cash_balance(ctx: RunContext[None], as_of_date: str) -> float:
+            return self.tool_get_cash_balance(as_of_date)
+
+        @sales_agent.tool
+        def tool_generate_financial_report(ctx: RunContext[None], as_of_date: str) -> Dict:
+            return self.tool_generate_financial_report(as_of_date)
+
+        return sales_agent
 
     def _fallback_sales_decision(self, quantity: int, current_stock: int) -> SalesDecision:
         if current_stock < quantity:
@@ -1035,15 +1152,37 @@ class SalesAgent:
                 return self._fallback_sales_decision(quantity, current_stock)
             if decision.fulfillable_units < 0:
                 return self._fallback_sales_decision(quantity, current_stock)
+            if decision.fulfillable_units > current_stock:
+                return self._fallback_sales_decision(quantity, current_stock)
             if decision.status == "ok" and decision.fulfillable_units < quantity:
+                return self._fallback_sales_decision(quantity, current_stock)
+            if decision.status == "ok" and current_stock < quantity:
                 return self._fallback_sales_decision(quantity, current_stock)
             return decision
         except Exception:
             return self._fallback_sales_decision(quantity, current_stock)
 
     def finalize_sale(self, item_name: str, quantity: int, total_price: float, as_of_date: str) -> AgentResult:
-        stock_df = get_stock_level(item_name, as_of_date)
-        current_stock = int(stock_df["current_stock"].iloc[0])
+        stock_context = self.tool_get_stock_level(item_name, as_of_date)
+        current_stock = int(stock_context["current_stock"])
+
+        # Hard safety invariant: never allow overselling regardless of model output.
+        if current_stock < quantity:
+            return AgentResult(
+                status="rejected",
+                message=(
+                    f"Order cannot be fulfilled: requested {quantity}, "
+                    f"available {current_stock}."
+                ),
+                details={
+                    "item_name": item_name,
+                    "requested": quantity,
+                    "available": current_stock,
+                    "rationale": "Deterministic stock guard: insufficient inventory for full fulfillment.",
+                    "fulfillable_units": max(current_stock, 0),
+                },
+            )
+
         decision = self._decide_sale(item_name, quantity, total_price, current_stock, as_of_date)
 
         if decision.status == "rejected":
@@ -1062,14 +1201,30 @@ class SalesAgent:
                 },
             )
 
-        transaction_id = create_transaction(
-            item_name=item_name,
-            transaction_type="sales",
-            quantity=quantity,
-            price=total_price,
-            date=as_of_date,
-        )
-        cash_after = get_cash_balance(as_of_date)
+        try:
+            transaction_id = self.tool_create_transaction(
+                item_name=item_name,
+                transaction_type="sales",
+                quantity=quantity,
+                price=total_price,
+                date=as_of_date,
+            )
+        except Exception:
+            return AgentResult(
+                status="rejected",
+                message=(
+                    f"Order cannot be fulfilled: requested {quantity}, "
+                    f"available {current_stock}."
+                ),
+                details={
+                    "item_name": item_name,
+                    "requested": quantity,
+                    "available": current_stock,
+                    "rationale": "Transaction safety guard blocked oversell.",
+                    "fulfillable_units": max(current_stock, 0),
+                },
+            )
+        cash_after = self.tool_get_cash_balance(as_of_date)
 
         return AgentResult(
             status="ok",
