@@ -1,13 +1,15 @@
 import pandas as pd
 import numpy as np
 import os
+import re
 import time
 import dotenv
 import ast
 from sqlalchemy.sql import text
 from datetime import datetime, timedelta
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 from sqlalchemy import create_engine, Engine
+from pydantic import BaseModel, Field
 
 # Create an SQLite database
 db_engine = create_engine("sqlite:///munder_difflin.db")
@@ -592,20 +594,193 @@ def search_quote_history(search_terms: List[str], limit: int = 5) -> List[Dict]:
 # Set up and load your env parameters and instantiate your model.
 
 
+class RequestIntent(BaseModel):
+    request_type: str = Field(
+        description="One of: inventory_inquiry, quote_request, sales_order, unknown"
+    )
+    item_name: Optional[str] = None
+    quantity: Optional[int] = None
+    rationale: str = ""
+
+
+class AgentResult(BaseModel):
+    status: str
+    message: str
+    details: Dict = Field(default_factory=dict)
+
+
 """Set up tools for your agents to use, these should be methods that combine the database functions above
  and apply criteria to them to ensure that the flow of the system is correct."""
 
 
 # Tools for inventory agent
+class InventoryAgent:
+    def check_inventory(self, item_name: str, as_of_date: str) -> AgentResult:
+        stock_df = get_stock_level(item_name, as_of_date)
+        current_stock = int(stock_df["current_stock"].iloc[0])
+        return AgentResult(
+            status="ok",
+            message=f"Current stock for {item_name}: {current_stock}",
+            details={"item_name": item_name, "current_stock": current_stock},
+        )
+
+    def maybe_reorder(self, item_name: str, needed_qty: int, as_of_date: str) -> AgentResult:
+        stock_df = get_stock_level(item_name, as_of_date)
+        current_stock = int(stock_df["current_stock"].iloc[0])
+        shortage = max(0, needed_qty - current_stock)
+
+        if shortage == 0:
+            return AgentResult(
+                status="ok",
+                message="No reorder needed.",
+                details={"shortage": 0, "delivery_date": as_of_date},
+            )
+
+        delivery_date = get_supplier_delivery_date(as_of_date, shortage)
+        return AgentResult(
+            status="pending",
+            message=f"Reorder needed for {shortage} units. Estimated delivery: {delivery_date}.",
+            details={"shortage": shortage, "delivery_date": delivery_date},
+        )
 
 
 # Tools for quoting agent
+class QuotingAgent:
+    def generate_quote(self, item_name: str, quantity: int, as_of_date: str) -> AgentResult:
+        history = search_quote_history([item_name], limit=5)
+        inventory_snapshot = get_all_inventory(as_of_date)
+        available_stock = int(inventory_snapshot.get(item_name, 0))
+
+        base_price = 0.12
+        if quantity >= 1000:
+            discount = 0.15
+        elif quantity >= 500:
+            discount = 0.1
+        elif quantity >= 100:
+            discount = 0.05
+        else:
+            discount = 0.0
+
+        total = quantity * base_price * (1 - discount)
+        explanation = (
+            f"Base unit price assumed at ${base_price:.2f}; "
+            f"{int(discount * 100)}% discount applied for quantity tier."
+        )
+
+        return AgentResult(
+            status="ok",
+            message=f"Quote for {quantity} x {item_name}: ${total:.2f}",
+            details={
+                "item_name": item_name,
+                "quantity": quantity,
+                "total_amount": round(total, 2),
+                "available_stock": available_stock,
+                "quote_explanation": explanation,
+                "history_matches": len(history),
+            },
+        )
 
 
 # Tools for ordering agent
+class SalesAgent:
+    def finalize_sale(self, item_name: str, quantity: int, total_price: float, as_of_date: str) -> AgentResult:
+        stock_df = get_stock_level(item_name, as_of_date)
+        current_stock = int(stock_df["current_stock"].iloc[0])
+
+        if current_stock < quantity:
+            return AgentResult(
+                status="rejected",
+                message=(
+                    f"Order cannot be fulfilled: requested {quantity}, "
+                    f"available {current_stock}."
+                ),
+                details={"item_name": item_name, "requested": quantity, "available": current_stock},
+            )
+
+        transaction_id = create_transaction(
+            item_name=item_name,
+            transaction_type="sales",
+            quantity=quantity,
+            price=total_price,
+            date=as_of_date,
+        )
+        cash_after = get_cash_balance(as_of_date)
+
+        return AgentResult(
+            status="ok",
+            message=f"Sale completed. Transaction id: {transaction_id}.",
+            details={
+                "transaction_id": transaction_id,
+                "cash_balance": cash_after,
+                "item_name": item_name,
+                "quantity": quantity,
+                "total_price": total_price,
+            },
+        )
 
 
 # Set up your agents and create an orchestration agent that will manage them.
+class Orchestrator:
+    def __init__(self) -> None:
+        self.inventory_agent = InventoryAgent()
+        self.quoting_agent = QuotingAgent()
+        self.sales_agent = SalesAgent()
+
+    def parse_request(self, request_text: str) -> RequestIntent:
+        text = request_text.lower()
+
+        quantity_match = re.search(r"(\d+)", text)
+        quantity = int(quantity_match.group(1)) if quantity_match else None
+
+        request_type = "unknown"
+        if any(token in text for token in ["inventory", "stock", "available"]):
+            request_type = "inventory_inquiry"
+        elif any(token in text for token in ["quote", "price", "cost"]):
+            request_type = "quote_request"
+        elif any(token in text for token in ["order", "buy", "purchase"]):
+            request_type = "sales_order"
+
+        return RequestIntent(
+            request_type=request_type,
+            quantity=quantity,
+            rationale="Rule-based parser placeholder; replace with pydantic-ai agent routing.",
+        )
+
+    def _extract_item_name(self, request_text: str) -> str:
+        text = request_text.lower()
+        if "cardstock" in text:
+            return "Cardstock"
+        if "glossy" in text:
+            return "Glossy paper"
+        if "banner" in text:
+            return "Banner paper"
+        if "letter" in text:
+            return "Letter-sized paper"
+        return "A4 paper"
+
+    def handle_request(self, request_text: str, request_date: str) -> str:
+        intent = self.parse_request(request_text)
+        item_name = self._extract_item_name(request_text)
+        quantity = intent.quantity or 100
+
+        if intent.request_type == "inventory_inquiry":
+            result = self.inventory_agent.check_inventory(item_name, request_date)
+            return result.message
+
+        if intent.request_type == "quote_request":
+            quote = self.quoting_agent.generate_quote(item_name, quantity, request_date)
+            return f"{quote.message} {quote.details.get('quote_explanation', '')}"
+
+        if intent.request_type == "sales_order":
+            quote = self.quoting_agent.generate_quote(item_name, quantity, request_date)
+            total_price = float(quote.details.get("total_amount", 0.0))
+            result = self.sales_agent.finalize_sale(item_name, quantity, total_price, request_date)
+            if result.status == "rejected":
+                reorder = self.inventory_agent.maybe_reorder(item_name, quantity, request_date)
+                return f"{result.message} {reorder.message}"
+            return result.message
+
+        return "I could not classify the request. Please ask about inventory, quotes, or orders."
 
 
 # Run your test scenarios by writing them here. Make sure to keep track of them.
@@ -613,7 +788,7 @@ def search_quote_history(search_terms: List[str], limit: int = 5) -> List[Dict]:
 def run_test_scenarios():
     
     print("Initializing Database...")
-    init_database()
+    init_database(db_engine)
     try:
         quote_requests_sample = pd.read_csv("quote_requests_sample.csv")
         quote_requests_sample["request_date"] = pd.to_datetime(
@@ -639,6 +814,8 @@ def run_test_scenarios():
     ############
     ############
 
+    orchestrator = Orchestrator()
+
     results = []
     for idx, row in quote_requests_sample.iterrows():
         request_date = row["request_date"].strftime("%Y-%m-%d")
@@ -660,7 +837,7 @@ def run_test_scenarios():
         ############
         ############
 
-        # response = call_your_multi_agent_system(request_with_date)
+        response = orchestrator.handle_request(request_with_date, request_date)
 
         # Update state
         report = generate_financial_report(request_date)
