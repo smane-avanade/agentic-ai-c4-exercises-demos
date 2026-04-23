@@ -1,6 +1,7 @@
 matplotlib
 networkx
 smolagents
+pydantic-ai
 numpy
 scikit-learn
 openai

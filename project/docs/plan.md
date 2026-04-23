@@ -71,22 +71,22 @@ Build a multi-agent system (max 5 agents) to streamline inventory management, qu
 ### 2.1 Select Agent Framework
 
 - [x] Compare smolagents, pydantic-ai, and npcsh
-- [ ] Decision: **Selected Framework: \*\*\*\***\_\_\_\_**\*\*\*\***
-- [ ] Justification for selection:
-  - [ ] Reason 1: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
-  - [ ] Reason 2: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
-  - [ ] Reason 3: \***\*\*\*\*\*\*\***\_\_\_\***\*\*\*\*\*\*\***
+- [x] Decision: **Selected Framework: pydantic-ai**
+- [x] Justification for selection:
+  - [x] Reason 1: Strong typed models and structured outputs improve reliability for orchestrator-to-worker handoffs.
+  - [x] Reason 2: Clear tool input/output validation fits the database-driven helper function workflow.
+  - [x] Reason 3: Better long-term maintainability and explainability for rubric-focused reporting.
 
 ### 2.2 Prepare Development Environment
 
 - [x] Verify Python environment is active
-- [ ] Install selected framework:
+- [x] Install selected framework:
   ```bash
-  pip install [framework-name]
+  pip install pydantic-ai
   ```
-- [ ] Verify all dependencies installed
-- [ ] Create working implementation file: project_implementation.py (or chosen name)
-- [ ] Copy helper functions from project_starter.py to working file
+- [x] Verify all dependencies installed
+- [x] Confirm implementation source file: project/project_starter.py
+- [x] Keep and extend existing helper functions directly in project/project_starter.py
 
 ---
 
@@ -236,7 +236,7 @@ Build a multi-agent system (max 5 agents) to streamline inventory management, qu
   - [ ] Shows data flow: YES / NO
   - [ ] Shows orchestration: YES / NO
 - [ ] ✅ Implementation Script
-  - [ ] File: project_implementation.py (or actual name)
+  - [ ] File: project/project_starter.py
   - [ ] Readable variable names: YES / NO
   - [ ] Proper docstrings: YES / NO
   - [ ] Comments for complex logic: YES / NO
@@ -289,9 +289,9 @@ Build a multi-agent system (max 5 agents) to streamline inventory management, qu
 
 | Deliverable           | File/Location                | Status | Notes                                  |
 | --------------------- | ---------------------------- | ------ | -------------------------------------- |
-| Workflow Diagram      | docs/architecture.md         | 🟨     | Mermaid complete; image export pending |
+| Workflow Diagram      | project/diagram.png          | ✅     | Exported from workflow Mermaid diagram |
 | Architecture Options  | docs/architecture_options.md | ✅     | Alternatives separated and documented  |
-| Implementation Script | project_implementation.py    | ⬜     | Single Python file                     |
+| Implementation Script | project/project_starter.py   | ⬜     | Single Python file                     |
 | Test Results          | test_results.csv             | ⬜     | Generated from evaluation              |
 | Reflection Report     | docs/system_analysis.md      | ⬜     | Detailed analysis document             |
 | Plan Document         | docs/plan.md                 | ✅     | This document                          |
@@ -300,13 +300,13 @@ Build a multi-agent system (max 5 agents) to streamline inventory management, qu
 
 ## Progress Checklist
 
-**Phase 1 (Planning & Design):** 🟨 ~90% (diagram image export pending)  
-**Phase 2 (Setup & Configuration):** 🟨 ~20% (framework decision pending)  
+**Phase 1 (Planning & Design):** ✅ 100%  
+**Phase 2 (Setup & Configuration):** ✅ 100%  
 **Phase 3 (Implementation):** ⬜ 0% → 100%  
 **Phase 4 (Testing & Evaluation):** ⬜ 0% → 100%  
 **Phase 5 (Documentation & Reflection):** ⬜ 0% → 100%
 
-**Overall Project Completion:** 🟨 ~22%
+**Overall Project Completion:** 🟨 ~40%
 
 ---
 
@@ -314,12 +314,12 @@ Build a multi-agent system (max 5 agents) to streamline inventory management, qu
 
 - **Architecture Selected:** Option 1 (Three-Agent Hub-and-Spoke) with optional Business Analyst agent
 - **Architecture Artifacts Created:** `docs/architecture.md` and `docs/architecture_options.md`
-- **Framework Selection Pending:** pydantic-ai is currently the recommended direction
-- **Diagram Export Pending:** Mermaid diagrams are complete; image export to PNG/SVG still pending
-- **Implementation Details:** To begin in `project/project_starter.py` under the provided starter sections
+- **Framework Selected:** pydantic-ai (installed in the active virtual environment)
+- **Diagram Export Completed:** Workflow saved as `project/diagram.png` (source in `project/diagram.md` and `project/diagram.mmd`)
+- **Implementation File Confirmed:** `project/project_starter.py` will be the single source file submission
 - **Key Constraint:** Maximum 5 agents - current design uses 4 agents
 
 ---
 
 _Last Updated: 2026-04-23_  
-_Next Phase Start Time: Phase 2.1 (finalize framework selection)_
+_Next Phase Start Time: Phase 3.1 (wire pydantic-ai agent scaffolding in project/project_starter.py)_
