@@ -10,6 +10,11 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union
 from sqlalchemy import create_engine, Engine
 from pydantic import BaseModel, Field
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
+dotenv.load_dotenv()
 
 # Create an SQLite database
 db_engine = create_engine("sqlite:///munder_difflin.db")
@@ -725,8 +730,34 @@ class Orchestrator:
         self.inventory_agent = InventoryAgent()
         self.quoting_agent = QuotingAgent()
         self.sales_agent = SalesAgent()
+        self.router_agent = self._build_router_agent()
 
-    def parse_request(self, request_text: str) -> RequestIntent:
+    def _build_router_agent(self) -> Optional[Agent]:
+        api_key = os.getenv("UDACITY_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+        model_name = os.getenv("UDACITY_OPENAI_MODEL", "gpt-4o-mini")
+        base_url = os.getenv("UDACITY_OPENAI_BASE_URL", "https://openai.vocareum.com/v1")
+
+        if not api_key:
+            return None
+
+        provider = OpenAIProvider(base_url=base_url, api_key=api_key)
+        model = OpenAIChatModel(model_name, provider=provider)
+
+        return Agent(
+            model=model,
+            output_type=RequestIntent,
+            system_prompt=(
+                "You are a routing agent for a paper supply company. "
+                "Classify each incoming request as one of: inventory_inquiry, quote_request, sales_order, or unknown. "
+                "Extract the requested quantity if present. "
+                "Extract the most likely item_name using the exact product wording when the request is clear. "
+                "Do not invent unsupported details."
+            ),
+            retries=1,
+            output_retries=1,
+        )
+
+    def _fallback_parse_request(self, request_text: str) -> RequestIntent:
         text = request_text.lower()
 
         quantity_match = re.search(r"(\d+)", text)
@@ -743,8 +774,40 @@ class Orchestrator:
         return RequestIntent(
             request_type=request_type,
             quantity=quantity,
-            rationale="Rule-based parser placeholder; replace with pydantic-ai agent routing.",
+            rationale="Fallback regex router used because pydantic-ai routing was unavailable.",
         )
+
+    def parse_request(self, request_text: str) -> RequestIntent:
+        if self.router_agent is None:
+            return self._fallback_parse_request(request_text)
+
+        try:
+            result = self.router_agent.run_sync(request_text)
+            intent = result.output
+            if intent.quantity is None:
+                fallback_intent = self._fallback_parse_request(request_text)
+                intent.quantity = fallback_intent.quantity
+            if not intent.rationale:
+                intent.rationale = "pydantic-ai router classification"
+            return intent
+        except Exception:
+            return self._fallback_parse_request(request_text)
+
+    def _normalize_item_name(self, item_name: Optional[str]) -> Optional[str]:
+        if not item_name:
+            return None
+
+        supply_lookup = {supply["item_name"].lower(): supply["item_name"] for supply in paper_supplies}
+        normalized = item_name.strip().lower()
+
+        if normalized in supply_lookup:
+            return supply_lookup[normalized]
+
+        for candidate, actual_name in supply_lookup.items():
+            if normalized in candidate or candidate in normalized:
+                return actual_name
+
+        return None
 
     def _extract_item_name(self, request_text: str) -> str:
         text = request_text.lower()
@@ -760,7 +823,7 @@ class Orchestrator:
 
     def handle_request(self, request_text: str, request_date: str) -> str:
         intent = self.parse_request(request_text)
-        item_name = self._extract_item_name(request_text)
+        item_name = self._normalize_item_name(intent.item_name) or self._extract_item_name(request_text)
         quantity = intent.quantity or 100
 
         if intent.request_type == "inventory_inquiry":
