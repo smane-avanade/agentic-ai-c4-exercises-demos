@@ -1329,8 +1329,11 @@ class Orchestrator:
             result = self.sales_agent.finalize_sale(item_name, quantity, total_price, request_date)
             if result.status == "rejected":
                 reorder = self.inventory_agent.maybe_reorder(item_name, quantity, request_date)
-                return f"{result.message} {reorder.message}"
-            return result.message
+                return (
+                    f"{quote.message} {quote.details.get('quote_explanation', '')} "
+                    f"{result.message} {reorder.message}"
+                )
+            return f"{quote.message} {quote.details.get('quote_explanation', '')} {result.message}"
 
         return "I could not classify the request. Please ask about inventory, quotes, or orders."
 
