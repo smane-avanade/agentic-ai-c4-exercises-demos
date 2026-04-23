@@ -1,21 +1,21 @@
 request_id,request_date,cash_balance,inventory_value,response
-1,2025-04-01,45097.7,4900.299999999999,Sale completed. Transaction id: 20.
-2,2025-04-03,45097.7,4900.299999999999,"Order cannot be fulfilled: requested 500, available 0. Reorder needed for 500 units. Estimated delivery: 2025-04-07."
-3,2025-04-04,45097.7,4900.299999999999,"Order cannot be fulfilled: requested 10000, available 272. Reorder needed for 9728 units. Estimated delivery: 2025-04-11."
-4,2025-04-05,45135.2,4825.3,Sale completed. Transaction id: 21.
-5,2025-04-05,45182.7,4775.3,Sale completed. Transaction id: 22.
-6,2025-04-06,45182.7,4775.3,"Order cannot be fulfilled: requested 500, available 0. Reorder needed for 500 units. Estimated delivery: 2025-04-10."
-7,2025-04-07,45182.7,4775.3,"Order cannot be fulfilled: requested 500, available 272. Reorder needed for 228 units. Estimated delivery: 2025-04-11."
-8,2025-04-07,45182.7,4775.3,"Order cannot be fulfilled: requested 500, available 387. Reorder needed for 113 units. Estimated delivery: 2025-04-11."
-9,2025-04-07,45220.7,4735.3,Sale completed. Transaction id: 23.
-13,2025-04-08,45220.7,4735.3,"Order cannot be fulfilled: requested 500, available 95. Reorder needed for 405 units. Estimated delivery: 2025-04-12."
-12,2025-04-08,45220.7,4735.3,"Order cannot be fulfilled: requested 200, available 95. Reorder needed for 105 units. Estimated delivery: 2025-04-12."
-10,2025-04-08,45220.7,4735.3,"Order cannot be fulfilled: requested 500, available 187. Reorder needed for 313 units. Estimated delivery: 2025-04-12."
-11,2025-04-08,45220.7,4735.3,"Order cannot be fulfilled: requested 500, available 187. Reorder needed for 313 units. Estimated delivery: 2025-04-12."
-14,2025-04-09,45220.7,4735.3,"Order cannot be fulfilled: requested 5000, available 272. Reorder needed for 4728 units. Estimated delivery: 2025-04-16."
-15,2025-04-12,45220.7,4735.3,"Order cannot be fulfilled: requested 10000, available 272. Reorder needed for 9728 units. Estimated delivery: 2025-04-19."
-16,2025-04-13,45220.7,4735.3,"Order cannot be fulfilled: requested 500, available 272. Reorder needed for 228 units. Estimated delivery: 2025-04-17."
-17,2025-04-14,45220.7,4735.3,"Order cannot be fulfilled: requested 1000, available 272. Reorder needed for 728 units. Estimated delivery: 2025-04-18."
-18,2025-04-14,45220.7,4735.3,"Order cannot be fulfilled: requested 500, available 95. Reorder needed for 405 units. Estimated delivery: 2025-04-18."
-19,2025-04-15,45220.7,4735.3,"Order cannot be fulfilled: requested 2000, available 187. Reorder needed for 1813 units. Estimated delivery: 2025-04-22."
-20,2025-04-17,45220.7,4735.3,"Order cannot be fulfilled: requested 5000, available 0. Reorder needed for 5000 units. Estimated delivery: 2025-04-24."
+1,2025-04-01,45059.7,4940.299999999999,Current stock for Glossy paper: 587
+2,2025-04-03,45059.7,4940.299999999999,"Order cannot be fulfilled: requested 500, available 272. Reorder needed for 228 units. Estimated delivery: 2025-04-07."
+3,2025-04-04,45059.7,4940.299999999999,"Order cannot be fulfilled: requested 10000, available 272. Reorder needed for 9728 units. Estimated delivery: 2025-04-11."
+4,2025-04-05,45059.7,4940.299999999999,Current stock for Cardstock: 595
+5,2025-04-05,45059.7,4940.299999999999,Current stock for Colored paper: 788
+6,2025-04-06,45059.7,4940.299999999999,"Current stock for Construction paper: 0. Reorder recommended: Current stock is 0, which is below the minimum stock level. A reorder is needed."
+7,2025-04-07,45059.7,4940.299999999999,"Quote for 500 x A4 paper: $22.50 We are pleased to offer a competitive quote for your order of 500 A4 paper units. This pricing reflects a quantity discount, making it a great value for your needs."
+8,2025-04-07,45059.7,4940.299999999999,"Order cannot be fulfilled: requested 10000, available 587. Reorder needed for 9413 units. Estimated delivery: 2025-04-14."
+9,2025-04-07,45059.7,4940.299999999999,"Quote for 200 x Glossy paper: $20.00 We are pleased to offer you a competitive price due to the quantity you are ordering. A discount has been applied, reflected in the final total."
+13,2025-04-08,45059.7,4940.299999999999,Current stock for Cardstock: 595
+12,2025-04-08,45059.7,4940.299999999999,Current stock for Cardstock: 595
+10,2025-04-08,45059.7,4940.299999999999,"Quote for 500 x Glossy paper: $50.00 We are pleased to offer you a competitive discount for your order of 500 units of glossy paper. The price per unit reflects our commitment to providing value for larger quantities, ensuring you receive the best deal possible."
+11,2025-04-08,45059.7,4940.299999999999,Current stock for Glossy paper: 587
+14,2025-04-09,45059.7,4940.299999999999,"Quote for 5000 x A4 paper: $125.00 We are pleased to offer a competitive quote for your order of A4 paper based on bulk pricing. A discount is applied due to the large quantity, making this a great deal!"
+15,2025-04-12,45059.7,4940.299999999999,"Quote for 10000 x A4 paper: $500.00 The price remains competitive with a unit price of $0.05, ensuring you get the best value for your large quantity order of A4 paper."
+16,2025-04-13,45059.7,4940.299999999999,"Quote for 500 x A4 paper: $12.50 We are pleased to offer you a competitive rate for your order of A4 paper at 500 units. The quantity of your order allows us to provide a significant discount, resulting in a reduced unit price of $0.025, making this an excellent value."
+17,2025-04-14,45059.7,4940.299999999999,"Quote for 1000 x A4 paper: $45.00 We are pleased to offer you a competitive discount on your order of 1000 units of A4 paper, bringing the unit price down to $0.045. This discount reflects our commitment to providing value for bulk purchases."
+18,2025-04-14,45059.7,4940.299999999999,Current stock for Cardstock: 595
+19,2025-04-15,45059.7,4940.299999999999,Current stock for Glossy paper: 587
+20,2025-04-17,45059.7,4940.299999999999,"Quote for 5000 x Flyers: $375.00 We're pleased to offer a competitive price of $0.075 per flyer for your order of 5000 flyers. This includes a generous discount reflecting bulk purchasing, and while the stock is currently unavailable, we'll ensure timely fulfillment once available."
