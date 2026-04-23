@@ -5,3 +5,5 @@ pydantic-ai
 numpy
 scikit-learn
 openai
+pandas
+sqlalchemy
