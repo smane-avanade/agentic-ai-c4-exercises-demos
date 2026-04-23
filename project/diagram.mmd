@@ -1,43 +1,42 @@
 graph TB
     Customer["👤 Customer Request<br/>(Text Input)"]
+    Response["✉️ Customer Response<br/>(Text Output)"]
 
-    Orch["🎯 Orchestrator Agent<br/>Route & Coordinate"]
+    Orch["🎯 Orchestrator Agent<br/>Responsibility: route requests, evaluate intent quality, delegate to workers, and return final response"]
 
-    subgraph Workers["Worker Agents"]
-        Inv["📦 Inventory Agent<br/>Stock Management"]
-        Quote["💰 Quoting Agent<br/>Price Generation"]
-        Sales["🛒 Sales Agent<br/>Order Processing"]
+    subgraph Workers["Worker Agents (Distinct Responsibilities)"]
+        Inv["📦 Inventory Agent<br/>Responsibility: check stock levels and assess reorder needs"]
+        Quote["💰 Quoting Agent<br/>Responsibility: generate customer quotes using history and discount logic"]
+        Sales["🛒 Sales Agent<br/>Responsibility: finalize orders and record transactions"]
     end
 
-    subgraph Tools["Database Tools"]
-        T1["get_stock_level()"]
-        T2["get_all_inventory()"]
-        T3["get_supplier_delivery_date()"]
-        T4["search_quote_history()"]
-        T5["create_transaction()"]
-        T6["get_cash_balance()"]
+    subgraph Tools["Agent Tools (Helper Function + Purpose)"]
+        T1["get_stock_level()<br/>Purpose: check stock for a specific item on a request date"]
+        T2["get_all_inventory()<br/>Purpose: retrieve full inventory snapshot for quote and order context"]
+        T3["get_supplier_delivery_date()<br/>Purpose: estimate delivery date for reorder shortages"]
+        T4["search_quote_history()<br/>Purpose: find relevant historical quotes for pricing decisions"]
+        T5["create_transaction()<br/>Purpose: persist sales or stock-order transactions"]
+        T6["get_cash_balance()<br/>Purpose: retrieve financial impact after transactions"]
+        T7["generate_financial_report()<br/>Purpose: produce end-of-run asset and performance summary"]
     end
 
     DB["🗄️ SQLite Database<br/>(inventory, quotes, transactions)"]
 
-    Response["✉️ Customer Response<br/>(Text Output)"]
+    Customer -->|"inquiry / quote / order"| Orch
+    Orch -->|"inventory inquiry"| Inv
+    Orch -->|"quote request"| Quote
+    Orch -->|"sales order"| Sales
 
-    Customer -->|"inquiry/quote/order"| Orch
-    Orch -->|"check inventory"| Inv
-    Orch -->|"generate quote"| Quote
-    Orch -->|"process order"| Sales
+    Inv -->|"item stock lookup"| T1
+    Inv -->|"inventory context"| T2
+    Inv -->|"reorder ETA"| T3
 
-    Inv --> T1
-    Inv --> T2
-    Inv --> T3
-    Inv --> T5
+    Quote -->|"historical pricing"| T4
+    Quote -->|"availability context"| T2
 
-    Quote --> T4
-    Quote -->|"historical context"| T1
-
-    Sales --> T5
-    Sales --> T6
-    Sales --> T2
+    Sales -->|"record completed sale"| T5
+    Sales -->|"post-sale cash check"| T6
+    Sales -->|"availability validation"| T1
 
     T1 --> DB
     T2 --> DB
@@ -45,9 +44,11 @@ graph TB
     T4 --> DB
     T5 --> DB
     T6 --> DB
+    T7 --> DB
 
-    Inv -->|"stock info"| Orch
-    Quote -->|"quote/pricing"| Orch
-    Sales -->|"order status"| Orch
+    Inv -->|"stock status + reorder recommendation"| Orch
+    Quote -->|"quote amount + rationale"| Orch
+    Sales -->|"sale status or rejection reason"| Orch
 
-    Orch --> Response
+    Orch -->|"final customer-facing response"| Response
+    Orch -.->|"evaluation/reporting stage"| T7
